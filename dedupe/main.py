@@ -170,16 +170,13 @@ def train(clients):
                   'specific_issues': {'type': 'Text', 'Has Missing': True,
                                       'corpus': [] #map(lambda x: x['specific_issues'],clients.values())
                                   },
-                  'exact_name':  {'type': 'String',
-                                  'corpus': [] #map(lambda x: x['rough_name'],clients.values())
-                              },
+                  'exact_name':  {'type': 'String'},
                   'alis':     {'type': 'Set',
                                'corpus': [] #map(lambda x: x['alis'],clients.values())
                            },
 
-                  'houseID':  {'type': 'Custom',
-                               'Has Missing' : True,
-                               'comparator': sameOrNotComparator},
+                  'houseID':  {'type': 'Exact'},
+
         }
         for k,v in list(fields.iteritems()):
             if k != 'houseID':
