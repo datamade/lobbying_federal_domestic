@@ -8,7 +8,7 @@ processed_files = 'processed_files'
 settings_file = 'learned_settings'
 training_file = 'bootstrapping.json'
 output_pickle = 'clusters.pickle'
-nprocess = int(os.environ["NPROCESS"])
+nprocess = 1
 
 def sameOrNotComparator(field_1, field_2) :
     if field_1 and field_2 :
@@ -146,7 +146,6 @@ def train(clients):
         fields = {'city':        {'type': 'String', 'Has Missing': True},
                   'country':     {'type': 'String', 'Has Missing': True},
                   'zip':         {'type': 'String', 'Has Missing': True},
-                  'houseID':     {'type': 'String', 'Has Missing': True},
                   'state':       {'type': 'String', 'Has Missing': True},                  
                   'address':     {'type': 'Text', 'Has Missing': True,
                                   'corpus': [] #map(lambda x: x['address'],clients.values())
@@ -158,15 +157,16 @@ def train(clients):
                   'specific_issues': {'type': 'Text', 'Has Missing': True,
                                       'corpus': [] #map(lambda x: x['specific_issues'],clients.values())
                                   },
-                  'rough_name':  {'type': 'Text',
+                  'exact_name':  {'type': 'Text',
                                   'corpus': [] #map(lambda x: x['rough_name'],clients.values())
                               },
                   'alis':     {'type': 'Set',
                                'corpus': [] #map(lambda x: x['alis'],clients.values())
                            },
 
-                  'exact_name':  {'type': 'Custom',
-                                  'comparator': sameOrNotComparator},
+                  'houseId':  {'type': 'Custom',
+                               'Has Missing' : True,
+                               'comparator': sameOrNotComparator},
         }
         for k,v in list(fields.iteritems()):
             if k != 'exact_name':
@@ -204,11 +204,14 @@ def train(clients):
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
-        #deduper.writeSettings(settings_file)
+        deduper.writeSettings(settings_file)
         return deduper
     
 def main():
     clients = loadData()
+    import pdb
+    pdb.set_trace()
+
     deduper = train(clients)
 
     print 'threshold...'    
