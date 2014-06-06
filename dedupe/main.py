@@ -184,9 +184,9 @@ def train(clients):
                                'comparator': sameOrNotComparator},
         }
         for k,v in list(fields.iteritems()):
-            if k != 'exact_name':
-                fields[k+"-exact_name"] = {'type':'Interaction',
-                                           'Interaction Fields': ["exact_name", k]}
+            if k != 'houseID':
+                fields[k+"-houseID"] = {'type':'Interaction',
+                                        'Interaction Fields': ["houseID", k]}
         # Create a new deduper object and pass our data model to it.
         deduper = dedupe.Dedupe(fields,num_processes=nprocess)
 
