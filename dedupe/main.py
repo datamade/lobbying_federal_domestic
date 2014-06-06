@@ -158,13 +158,11 @@ def train(clients):
         return dedupe.StaticDedupe(settings_file,num_processes=nprocess)
 
     else:
-        fields = {'city':        {'type': 'String', 'Has Missing': True},
-                  'country':     {'type': 'String', 'Has Missing': True},
-                  'zip':         {'type': 'String', 'Has Missing': True},
-                  'state':       {'type': 'String', 'Has Missing': True},                  
-                  'address':     {'type': 'Text', 'Has Missing': True,
-                                  'corpus': [] #map(lambda x: x['address'],clients.values())
-                              },
+        fields = {'city':        {'type': 'ShortString', 'Has Missing': True},
+                  'country':     {'type': 'ShortString', 'Has Missing': True},
+                  'zip':         {'type': 'ShortString', 'Has Missing': True},
+                  'state':       {'type': 'ShortString', 'Has Missing': True},                  
+                  'address':     {'type': 'String', 'Has Missing': True},
                   
                   'description': {'type': 'Text', 'Has Missing': True,
                                   'corpus': [] #map(lambda x: x['description'],clients.values())
@@ -172,7 +170,7 @@ def train(clients):
                   'specific_issues': {'type': 'Text', 'Has Missing': True,
                                       'corpus': [] #map(lambda x: x['specific_issues'],clients.values())
                                   },
-                  'exact_name':  {'type': 'Text',
+                  'exact_name':  {'type': 'String',
                                   'corpus': [] #map(lambda x: x['rough_name'],clients.values())
                               },
                   'alis':     {'type': 'Set',
@@ -211,7 +209,7 @@ def train(clients):
 
         #dedupe.consoleLabel(deduper)
 
-        deduper.train()
+        deduper.train(ppc=0.1, uncovered_dupes=2)
 
         # When finished, save our training away to disk
         deduper.writeTraining(training_file)
