@@ -224,9 +224,6 @@ def train(clients):
     
 def main():
     clients = loadData()
-    import pdb
-    pdb.set_trace()
-
     deduper = train(clients)
 
     print 'threshold...'    
