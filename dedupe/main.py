@@ -4,6 +4,7 @@ from pprint import pprint
 from glob   import glob
 import dedupe.serializer as serializer
 import optparse
+import logging
 
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
