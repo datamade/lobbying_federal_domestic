@@ -3,12 +3,26 @@ from numpy  import nan
 from pprint import pprint
 from glob   import glob
 import dedupe.serializer as serializer
+import optparse
+
+optp = optparse.OptionParser()
+optp.add_option('-v', '--verbose', dest='verbose', action='count',
+                help='Increase verbosity (specify multiple times for more)'
+                )
+(opts, args) = optp.parse_args()
+log_level = logging.WARNING 
+if opts.verbose == 1:
+    log_level = logging.INFO
+elif opts.verbose >= 2:
+    log_level = logging.DEBUG
+logging.getLogger().setLevel(log_level)
+
 
 processed_files = 'processed_files'
 settings_file = 'learned_settings'
 training_file = 'bootstrapping.json'
 output_pickle = 'clusters.pickle'
-nprocess = 1
+nprocess = 4
 
 def sameOrNotComparator(field_1, field_2) :
     if field_1 and field_2 :
@@ -164,7 +178,7 @@ def train(clients):
                                'corpus': [] #map(lambda x: x['alis'],clients.values())
                            },
 
-                  'houseId':  {'type': 'Custom',
+                  'houseID':  {'type': 'Custom',
                                'Has Missing' : True,
                                'comparator': sameOrNotComparator},
         }
