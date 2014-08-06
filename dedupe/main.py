@@ -5,6 +5,8 @@ from glob   import glob
 import dedupe.serializer as serializer
 import optparse
 import logging
+import json
+
 
 optp = optparse.OptionParser()
 optp.add_option('-v', '--verbose', dest='verbose', action='count',
@@ -122,7 +124,7 @@ def loadFile(f):
         "state":       preProcess(jOb["clientState"]),
         "zip":         preProcess(jOb["clientZip"]),
         
-        "alis":        frozenset(filter(lambda x: x != u"",jOb["alis"])),
+        "alis":        tuple(filter(lambda x: x != u"",jOb["alis"])),
         
         "houseID":     preProcess(jOb["houseID"]),
         "senate":      preProcess(jOb["senateID"]),            
@@ -139,6 +141,10 @@ def loadData():
         print ("File %s exists reading now" % processed_files)
         with open(processed_files,"r") as f:
             d = pickle.load(f)
+            for k, record in d.items() : # so I can json.serialize the output
+                for field_name, value in record.items() :
+                    if value.__class__ is frozenset :
+                        record[field_name] = tuple(value) 
             return d
     else:
         print "Loading and processing files now"
@@ -153,37 +159,40 @@ def loadData():
 # Training
 def train(clients):
     
+    
     if os.path.exists(settings_file):
-        print 'reading from', settings_file
-        return dedupe.StaticDedupe(settings_file,num_processes=nprocess)
+        with open(settings_file) as sf :
+            print 'reading from', settings_file
+            return dedupe.StaticDedupe(sf)
 
     else:
-        fields = {'city':        {'type': 'ShortString', 'Has Missing': True},
-                  'country':     {'type': 'ShortString', 'Has Missing': True},
-                  'zip':         {'type': 'ShortString', 'Has Missing': True},
-                  'state':       {'type': 'ShortString', 'Has Missing': True},                  
-                  'address':     {'type': 'String', 'Has Missing': True},
+        fields = [{'field' : 'city', 'type': 'ShortString', 'Has Missing': True},
+                  {'field' : 'country', 'type': 'ShortString', 'Has Missing': True},
+                  {'field' : 'zip', 'type': 'ShortString', 'Has Missing': True},
+                  {'field' : 'state', 'type': 'ShortString', 'Has Missing': True},                  
+                  {'field' : 'address', 'type': 'String', 'Has Missing': True},
                   
-                  'description': {'type': 'Text', 'Has Missing': True,
-                                  'corpus': [] #map(lambda x: x['description'],clients.values())
-                              },
-                  'specific_issues': {'type': 'Text', 'Has Missing': True,
+                  {'field' : 'description', 'type': 'Text', 'Has Missing': True,
+                   'corpus': [] #map(lambda x: x['description'],clients.values())},
+                   },
+                  {'field' : 'specific_issues', 'type': 'Text', 'Has Missing': True,
                                       'corpus': [] #map(lambda x: x['specific_issues'],clients.values())
                                   },
-                  'exact_name':  {'type': 'String'},
-                  'alis':     {'type': 'Set',
-                               'corpus': [] #map(lambda x: x['alis'],clients.values())
+                  {'field' : 'exact_name', 'type': 'String'},
+                  {'field' : 'alis', 'type': 'Set',
+                   'corpus': [] #map(lambda x: x['alis'],clients.values())
                            },
 
-                  'houseID':  {'type': 'Exact'},
+                  {'field' : 'houseID', 'type': 'Exact'},
+                  {'field' : 'senate', 'type': 'Exact'},
 
-        }
-        for k,v in list(fields.iteritems()):
-            if k != 'houseID':
-                fields[k+"-houseID"] = {'type':'Interaction',
-                                        'Interaction Fields': ["houseID", k]}
+               ]
+        #for definition in fields[:] :
+        #    if definition.field != 'houseID':
+        #        fields[k+"-houseID"] = {'type':'Interaction',
+        #                                'Interaction Fields': ["houseID", k]}
         # Create a new deduper object and pass our data model to it.
-        deduper = dedupe.Dedupe(fields,num_processes=nprocess)
+        deduper = dedupe.Dedupe(fields)
 
         # To train dedupe, we feed it a random sample of records.
         deduper.sample(clients, 150000)
@@ -193,8 +202,9 @@ def train(clients):
         # look for it an load it in.
         # __Note:__ if you want to train from scratch, delete the training_file
         if os.path.exists(training_file):
-            print 'reading labeled examples from ', training_file
-            deduper.readTraining(training_file)
+            with open(training_file) as tf :
+                print 'reading labeled examples from ', training_file
+                deduper.readTraining(tf)
                         
         # ## Active learning
         # Dedupe will find the next pair of records
@@ -204,17 +214,22 @@ def train(clients):
         # press 'f' when you are finished
         print 'starting active labeling...'
 
-        #dedupe.consoleLabel(deduper)
+        dedupe.consoleLabel(deduper)
 
         deduper.train(ppc=0.1, uncovered_dupes=2)
 
         # When finished, save our training away to disk
-        deduper.writeTraining(training_file)
+        with open(training_file, 'w') as tf :
+            deduper.writeTraining(tf)
 
         # Save our weights and predicates to disk.  If the settings file
         # exists, we will skip all the training and learning next time we run
         # this file.
-        deduper.writeSettings(settings_file)
+        with open(settings_file, 'w') as sf : 
+            deduper.writeSettings(sf)
+
+        deduper.cleanupTraining()
+
         return deduper
     
 def main():
@@ -235,11 +250,18 @@ def main():
 
     clustered_clients = []
     for s in clustered_dupes:
-        clustered_clients.append(map(lambda x: clients[x],s))
+        clustered_clients.append(map(lambda x: clients[x],s[0]))
     filename = output_pickle+str(int(time.time()))
     with open(filename,"w") as f:
             pickle.dump(clustered_clients,f,2)
     print("Saved clients to %s" % filename)
+    
+    with open('clusters.json', 'w') as out_json :
+        json.dump(clustered_clients, 
+                  out_json,
+                  sort_keys=True,
+                  indent=4, 
+                  separators=(',', ': '))
     
 if __name__ == "__main__":
     main()
